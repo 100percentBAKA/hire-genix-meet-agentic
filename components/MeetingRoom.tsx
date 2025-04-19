@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   CallControls,
   CallParticipantsList,
@@ -23,6 +23,21 @@ import Loader from './Loader';
 import EndCallButton from './EndCallButton';
 import { cn } from '@/lib/utils';
 
+// Helper function to get cookies (copied from StreamClientProvider)
+const getCookie = (name: string): string | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+};
+
 type CallLayoutType = 'grid' | 'speaker-left' | 'speaker-right';
 
 const MeetingRoom = () => {
@@ -33,10 +48,29 @@ const MeetingRoom = () => {
   const [layout, setLayout] = useState<CallLayoutType>('speaker-left');
   const [showParticipants, setShowParticipants] = useState(false);
   const [isAgentAdding, setIsAgentAdding] = useState(false);
+  const [canAddBot, setCanAddBot] = useState(false);
   const { useCallCallingState } = useCallStateHooks();
 
   // for more detail about types of CallingState see: https://getstream.io/video/docs/react/ui-cookbook/ringing-call/#incoming-call-panel
   const callingState = useCallCallingState();
+
+  // Effect to check email permission on component mount and update
+  useEffect(() => {
+    const checkPermission = () => {
+      const userEmail = getCookie('user_email_manual');
+      const allowedEmail = process.env.NEXT_PUBLIC_ALLOWED_EMAIL;
+      console.log('Checking permission:', { userEmail, allowedEmail });
+      setCanAddBot(!!userEmail && !!allowedEmail && userEmail === allowedEmail);
+    };
+
+    checkPermission();
+
+    // Optional: Re-check if cookie might change dynamically (e.g., user logs out/in in another tab)
+    // This might be overkill for a demo
+    // const interval = setInterval(checkPermission, 5000); // Check every 5 seconds
+    // return () => clearInterval(interval);
+
+  }, []); // Run only once on mount, or add dependencies if needed
 
   if (callingState !== CallingState.JOINED) return <Loader />;
 
@@ -130,15 +164,17 @@ const MeetingRoom = () => {
             <Users size={20} className="text-white" />
           </div>
         </button>
-        {/* Add AI Agent Button */}
-        <button
-          onClick={handleAddAgent}
-          disabled={isAgentAdding}
-          className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b] disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Add AI Agent"
-        >
-          <Bot size={20} className="text-white" />
-        </button>
+        {/* Conditionally render Add AI Agent Button */}
+        {canAddBot && (
+          <button
+            onClick={handleAddAgent}
+            disabled={isAgentAdding}
+            className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b] disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Add AI Agent"
+          >
+            <Bot size={20} className="text-white" />
+          </button>
+        )}
         {!isPersonalRoom && <EndCallButton />}
       </div>
     </section>
