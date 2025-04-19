@@ -76,6 +76,20 @@ export async function POST(
   req: Request, // req is not used here, but it's part of the signature
   { params }: { params: { callType: string; callId: string } },
 ) {
+  // --- TEMPORARY DEBUG LOGGING --- START
+  console.log('--- API Route /api/connect invoked ---');
+  console.log('Attempting to read env vars:');
+  console.log(
+    `NEXT_PUBLIC_STREAM_API_KEY: ${process.env.NEXT_PUBLIC_STREAM_API_KEY ? 'Loaded' : 'MISSING'}`,
+  );
+  console.log(
+    `STREAM_API_SECRET: ${process.env.STREAM_API_SECRET ? 'Loaded' : 'MISSING'}`,
+  );
+  console.log(
+    `OPENAI_API_KEY: ${process.env.OPENAI_API_KEY ? 'Loaded' : 'MISSING'}`,
+  );
+  // --- TEMPORARY DEBUG LOGGING --- END
+
   if (!streamApiKey || !streamApiSecret || !openAiApiKey) {
     return NextResponse.json(
       {
