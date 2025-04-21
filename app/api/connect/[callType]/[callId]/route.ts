@@ -23,7 +23,7 @@ async function setupRealtimeClient(realtimeClient: any) {
 **Goal:** Evaluate the candidate's basic technical understanding and problem-solving ability based on their profile and responses. Keep the interview concise (around 3 main technical questions plus follow-ups) for this demonstration.
 
 **Candidate Profile (Dummy):**
-*   **Name:** Alex Chen
+*   **Name:** Anil Nandhan
 *   **Applying for:** Junior Software Engineer
 *   **Key Skills:** React, Node.js, Python, Basic SQL
 *   **Experience:** 1-year internship at TechCorp (built internal tools using React/Node).
@@ -149,23 +149,6 @@ export async function POST(
   try {
     const streamClient = new StreamClient(streamApiKey, streamApiSecret);
     const call = streamClient.video.call(callType, callId);
-
-    // --- Added Step: Fetch and Log Call State ---
-    console.log('API Route: Fetching current call state...');
-    const callStateResponse = await call.get();
-    if (callStateResponse?.call) {
-      console.log(
-        'API Route: Current Call State:',
-        JSON.stringify(callStateResponse.call, null, 2),
-      );
-      console.log(
-        'API Route: Current Call Members:',
-        JSON.stringify(callStateResponse.members, null, 2),
-      );
-    } else {
-      console.log('API Route: Failed to fetch call state details.');
-    }
-    // --- End Added Step ---
 
     console.log('API Route: Attempting to connect OpenAI agent...');
 

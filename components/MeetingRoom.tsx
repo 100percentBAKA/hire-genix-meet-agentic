@@ -8,9 +8,10 @@ import {
   PaginatedGridLayout,
   SpeakerLayout,
   useCallStateHooks,
+  useCall,
 } from '@stream-io/video-react-sdk';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { Users, LayoutList, Bot } from 'lucide-react';
+import { Users, LayoutList, Bot, UserPlus } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -22,6 +23,7 @@ import {
 import Loader from './Loader';
 import EndCallButton from './EndCallButton';
 import { cn } from '@/lib/utils';
+import { useToast } from "@/components/ui/use-toast";
 
 // Helper function to get cookies (copied from StreamClientProvider)
 const getCookie = (name: string): string | null => {
@@ -49,9 +51,17 @@ const MeetingRoom = () => {
   const [showParticipants, setShowParticipants] = useState(false);
   const [isAgentAdding, setIsAgentAdding] = useState(false);
   const [canAddBot, setCanAddBot] = useState(false);
+  const [isAddingGroupBot, setIsAddingGroupBot] = useState(false);
   const { useCallCallingState } = useCallStateHooks();
+  const call = useCall();
+  const { toast } = useToast();
 
-  // for more detail about types of CallingState see: https://getstream.io/video/docs/react/ui-cookbook/ringing-call/#incoming-call-panel
+  // Determine if this is a group discussion meeting (with type assertion)
+  const customData = call && typeof (call as any).custom === 'object' && (call as any).custom !== null
+    ? (call as any).custom
+    : undefined;
+  const isGroupDiscussionCall = customData?.isGroupDiscussion === true;
+
   const callingState = useCallCallingState();
 
   // Effect to check email permission on component mount and update
@@ -119,6 +129,54 @@ const MeetingRoom = () => {
     }
   };
 
+  // Handler for adding Group Discussion Participant bot
+  const handleAddGroupParticipant = async () => {
+    if (!id) {
+      console.error("Meeting ID is missing");
+      toast({
+        title: "Error",
+        description: "Cannot add bot, meeting ID missing.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setIsAddingGroupBot(true);
+    const agentUserId = `group-bot-${Math.random().toString(16).substring(2, 8)}`;
+
+    try {
+      console.log(`Attempting to add group participant bot ${agentUserId} to meeting ${id}`);
+      const response = await fetch(`/api/connect-group/default/${id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ agentUserId: agentUserId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to add group bot: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log("Group participant bot added successfully:", result);
+      toast({
+        title: "Success",
+        description: `Participant Bot (${result.agentUserId}) added.`,
+      });
+      // No need to close modal as there isn't one here
+    } catch (error) {
+      console.error("Error adding group participant bot:", error);
+      toast({
+        title: "Error Adding Bot",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAddingGroupBot(false);
+    }
+  };
+
   return (
     <section className="relative h-screen w-full overflow-hidden pt-4 text-white">
       <div className="relative flex size-full items-center justify-center">
@@ -164,15 +222,26 @@ const MeetingRoom = () => {
             <Users size={20} className="text-white" />
           </div>
         </button>
-        {/* Conditionally render Add AI Agent Button */}
+        {/* Conditionally render Add AI Agent (Interviewer) Button */}
         {canAddBot && (
           <button
             onClick={handleAddAgent}
             disabled={isAgentAdding}
             className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b] disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Add AI Agent"
+            title="Add AI Interviewer Agent"
           >
             <Bot size={20} className="text-white" />
+          </button>
+        )}
+        {/* Conditionally render Add Group Discussion Participant Button */}
+        {isGroupDiscussionCall && (
+          <button
+            onClick={handleAddGroupParticipant}
+            disabled={isAddingGroupBot}
+            className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b] disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Add AI Discussion Participant"
+          >
+            <UserPlus size={20} className="text-white" />
           </button>
         )}
         {!isPersonalRoom && <EndCallButton />}
